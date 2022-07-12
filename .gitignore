@@ -1,0 +1,5 @@
+# ignore data files
+**/001.data/*
+
+# ignore log files
+**/999.logs/*

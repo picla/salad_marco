@@ -3,7 +3,7 @@
 # SLURM
 #SBATCH --mem=10GB
 #SBATCH --time=06:00:00
-#SBATCH --output=999.logs/00x.selectSamplesForManual.log
+#SBATCH --output=999.logs/001.subsetVCF.log
 
 ml build-env/2020
 ml bcftools/1.9-foss-2018b

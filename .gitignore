@@ -3,3 +3,6 @@
 
 # ignore log files
 **/999.logs/*
+
+# ignore R project
+.Rproj.user

@@ -32,6 +32,6 @@ IDsub=${TEMP}ID_sub.txt
 awk '(NR > 1) {print $1}' $ACCESSIONS > $IDsub
 
 ## update VCF header and subset
-bcftools reheader -s $ID_MAP $VCF | bcftools view -Oz -a -S $IDsub -o ${DIRout}${VCFout}
+bcftools reheader -s $ID_MAP $VCF | bcftools view -Ou -a -S $IDsub | bcftools view -Oz -m 2 -o ${DIRout}${VCFout}
 tabix ${DIRout}${VCFout}
 

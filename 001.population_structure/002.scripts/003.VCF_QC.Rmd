@@ -1,0 +1,96 @@
+---
+title: "003.VCf_QC"
+author: "Pieter Clauw"
+date: '2022-07-14'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r data}
+var_qual <- read_delim("../001.data/Lactuca.snp.TKI.sub.lqual", delim = "\t",
+           col_names = c("chr", "pos", "qual"), skip = 1)
+
+var_depth <- read_delim("../001.data/Lactuca.snp.TKI.sub.ldepth.mean", delim = "\t",
+           col_names = c("chr", "pos", "mean_depth", "var_depth"), skip = 1)
+
+var_miss <- read_delim("../001.data/Lactuca.snp.TKI.sub.lmiss", delim = "\t",
+                       col_names = c("chr", "pos", "nchr", "nfiltered", "nmiss", "fmiss"), skip = 1)
+
+var_freq <- read_delim("../001.data/Lactuca.snp.TKI.sub.frq", delim = "\t",
+                       col_names = c("chr", "pos", "nalleles", "nchr", "a1", "a2"), skip = 1)
+
+ind_depth <- read_delim("../001.data/Lactuca.snp.TKI.sub.idepth", delim = "\t",
+                        col_names = c("ind", "nsites", "depth"), skip = 1)
+
+ind_miss  <- read_delim("../001.data/Lactuca.snp.TKI.sub.imiss", delim = "\t",
+                        col_names = c("ind", "ndata", "nfiltered", "nmiss", "fmiss"), skip = 1)
+
+ind_het <- read_delim("../001.data/Lactuca.snp.TKI.sub.het", delim = "\t",
+           col_names = c("ind","ho", "he", "nsites", "f"), skip = 1)
+
+
+
+```
+```{r quality}
+var_qual.plt <- var_qual %>%
+  ggplot(aes(qual)) + geom_density(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+
+
+var_qual.plt + xlim(0, 500) + theme_classic() 
+```
+
+```{r depth}
+var_depth.plt <- var_depth %>%
+  ggplot(aes(mean_depth)) + geom_density(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+
+
+var_depth.plt + theme_classic() 
+summary(var_depth$mean_depth)
+```
+```{r missingness}
+var_miss.plt <- var_miss %>%
+  ggplot(aes(fmiss)) + geom_density(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+
+
+var_miss.plt + theme_classic()
+summary(var_miss$fmiss)
+```
+
+
+
+
+```{r maf}
+# find minor allele frequency
+var_freq$maf <- var_freq %>% select(a1, a2) %>% apply(1, function(z) min(z))
+
+var_freq.plt <- var_freq %>%
+  drop_na() %>%
+  ggplot(aes(maf)) + geom_density(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+
+
+var_freq.plt + theme_classic()
+```
+
+```{r individual depth}
+ind_depth.plt <- ind_depth %>%
+  ggplot(aes(depth)) + geom_histogram(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+ind_depth.plt + theme_classic()
+```
+
+```{r individual missingness}
+ind_miss.plt <- ind_miss %>%
+  ggplot(aes(fmiss)) + geom_histogram(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+ind_miss.plt + theme_classic()
+```
+
+```{r individual heterozygosity}
+ind_het.plt <- ind_het %>%
+  ggplot(aes(f)) + geom_histogram(fill = "dodgerblue1", colour = "black", alpha = 0.3)
+ind_het.plt + theme_classic()
+```
+
+

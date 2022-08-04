@@ -1,0 +1,75 @@
+---
+title: "004.population_structure"
+author: "Pieter Clauw"
+date: '2022-08-02'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SNPRelate)
+```
+```{r data}
+vcf.fn <- '../001.data/Lactuca.snp.TKI.sub.vcf.gz'
+snps.gds <- '../001.data/Lactuca.snp.TKI.sub.gds'
+
+meta <- read_tsv('../../000.generalData/001.data/Lettuce_accessions_data.txt')
+
+```
+```{r VCF to GDS}
+# Reformat
+snpgdsVCF2GDS(vcf.fn, out.fn = snps.gds, method = 'biallelic.only')
+snpgdsSummary(snps.gds)
+```
+```{r}
+# Open the GDS file
+genofile <- snpgdsOpen(snps.gds)
+
+# Get population information
+#   or pop_code <- scan("pop.txt", what=character())
+#   if it is stored in a text file "pop.txt"
+#pop_code <- read.gdsn(index.gdsn(genofile, path="sample.annot/pop.group"))
+
+#table(pop_code)
+```
+
+```{r PCA}
+# Run PCA
+pca <- snpgdsPCA(genofile, eigen.cnt = 0)
+
+# gather eigenvectors
+pca.eigenvect <- as_tibble(pca$eigenvect) %>%
+  rename_with( ~ gsub('V', 'PC', .x)) %>%
+  mutate('sample.id' = pca$sample.id) %>%
+  left_join(., select(meta, Line, Country, Year, `Crop type`), by = c('sample.id' = 'Line')) %>%
+  select(sample.id, Country, Year, `Crop type`, everything())
+```
+```{r variance explained}
+# cumulative percentage plot
+tibble('PC' = 1:length(pca$varprop), 'varprop' = pca$varprop) %>%
+  ggplot(aes(x = PC, y = cumsum(varprop))) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+```
+
+
+```{r PCA plot}
+map(seq(from = 1, to = 9, by = 2), function(PC.x){
+  PC.y <- PC.x + 1
+  
+  pca.eigenvect %>%
+    mutate(Country = as.factor(Year)) %>%
+    ggplot(aes_string(x = paste0('PC', PC.x), y = paste0('PC', PC.y))) +
+    geom_point(aes(color = `Crop type`))
+
+  
+})
+```
+```{r IBS}
+ibs <- snpgdsIBS(genofile)
+```
+```{r plot IBS}
+image(ibs$ibs, col=terrain.colors(16))
+```
+

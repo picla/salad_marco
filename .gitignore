@@ -4,5 +4,8 @@
 # ignore log files
 **/999.logs/*
 
-# ignore R project
+# ignore R project and history
 .Rproj.user
+.Rhistory
+
+

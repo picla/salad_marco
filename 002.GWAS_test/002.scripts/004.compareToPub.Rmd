@@ -1,0 +1,84 @@
+---
+title: "004.compareToPub"
+author: "Pieter Clauw"
+date: '2022-09-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(ggpubr)
+```
+
+# Goal
+We want to check if our GWAS results are comparable to the results published in https://www.nature.com/articles/s41588-021-00831-0
+
+```{r data}
+# GEMMA result file paths
+gwas.files <- list.files(path = '../003.results', pattern = '*.assoc.txt', full.names = T)
+
+# flowering time - published
+FT.pub <- read_xlsx('../001.data/41588_2021_831_MOESM14_ESM.xlsx') %>%
+  select(Chromosome, Position, Pvalue)
+
+# leaf anthocyanin - published
+antho.pub <- read_xlsx('../001.data/41588_2021_831_MOESM15_ESM.xlsx') %>%
+  select(Chromosome, Position, Pvalue)
+```
+
+
+```{r compare flowering time results}
+# read in GWAS data from GEMMA
+# published data only covers chromosome 7 -> filter
+# reformat
+FT.gemma <-  read_delim(gwas.files[2], delim = '\t') %>%
+  filter(chr == 7) %>%
+  mutate(Chromosome = paste0('chr', chr),
+         Position = ps,
+         Pvalue = p_lrt) %>%
+  select(Chromosome, Position, Pvalue)
+
+# merge data
+FT.plt <- FT.gemma %>%
+  left_join(FT.pub, by = c('Chromosome', 'Position'), suffix = c('.gemma', '.pub')) %>%
+  drop_na() %>%
+  ggplot(aes(x = -log10(Pvalue.pub), y = -log10(Pvalue.gemma))) +
+  geom_point() +
+  theme_classic() +
+  labs(title = 'flowering time',
+       x = 'published -log10(p-value)',
+       y = 'own GWAS -log10(p-value)')
+FT.plt
+```
+
+```{r compare leaf anthocyanin content results}
+# read in GWAS data from GEMMA
+# published data only covers chromosomes 5 and 9 -> filter
+# reformat
+antho.gemma <-  read_delim(gwas.files[4], delim = '\t') %>%
+  filter(chr %in% c(5, 9)) %>%
+  mutate(Chromosome = paste0('chr', chr),
+         Position = ps,
+         Pvalue = p_lrt) %>%
+  select(Chromosome, Position, Pvalue)
+
+# merge data
+antho.plt <- antho.gemma %>%
+  left_join(antho.pub, by = c('Chromosome', 'Position'), suffix = c('.gemma', '.pub')) %>%
+  drop_na() %>%
+  ggplot(aes(x = -log10(Pvalue.pub), y = -log10(Pvalue.gemma))) +
+  geom_point() +
+  theme_classic() +
+  labs(title = 'leaf anthocyanin content',
+       x = 'published -log10(p-value)',
+       y = 'own GWAS -log10(p-value)')
+antho.plt
+```
+```{r combo plot}
+combo.plt <- ggarrange(FT.plt, antho.plt)
+ggsave('../004.plots/GWAS_comparison.pdf', plot = combo.plt)
+
+```
+

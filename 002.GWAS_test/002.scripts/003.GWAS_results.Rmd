@@ -1,0 +1,178 @@
+---
+title: "003.GWAS_results.Rmd"
+author: "Pieter Clauw"
+date: '2022-08-11'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(wesanderson)
+```
+
+```{r data}
+# GEMMA gwas results
+gwas.files <- list.files(path = '../003.results', pattern = '*.assoc.txt', full.names = T)
+gwas.files.noCov <- list.files(path = '../003.results/no_PC_covariates', pattern = '*.assoc.txt', full.names = T)
+```
+
+```{r functions}
+# QQ-plots for GWAS -log10(p-values)
+plot.qq <- function(gwas.pval, ci = 0.95){
+  # get number of tests
+  nTests = length(gwas.pval)
+  qq.dat <- tibble(
+    observed = -log10(sort(gwas.pval)),
+    expected = -log10(ppoints(nTests)),
+    cLower = -log10(qbeta(p = (1 - ci) / 2, shape1 = seq(nTests), shape2 = rev(seq(nTests)))),
+    cUpper = -log10(qbeta(p = (1 + ci) / 2, shape1 = seq(nTests), shape2 = rev(seq(nTests)))))
+  # make QQ-plot
+  qq.plt <- ggplot(qq.dat, aes(x = expected, y = observed)) +
+    geom_ribbon(aes(ymax = cUpper, ymin = cLower), fill = "grey30", alpha = 0.5) +
+    geom_step(color = wes_palettes['Darjeeling1'][[1]][1], size = 1.1, direction = "vh") +
+    geom_segment(data = . %>% filter(expected == max(expected)),
+                 aes(x = 0, xend = expected, y = 0, yend = expected),
+                 size = 1.25, alpha = 0.5, color = "grey30", lineend = "round") +
+    labs(x = expression(paste("Expected -log"[10],"(", plain(P),")")),
+         y = expression(paste("Observed -log"[10],"(", plain(P),")"))) +
+    theme_minimal()
+  
+  return(qq.plt)
+}
+# get aboslute position of SNPs on the genome.
+# for plotting manhattan plots
+SNP_absolutePosition = function(chr, pos, chromEnds, gap = 1000000){
+  chromEnds.cum <- c(0, cumsum(chromEnds))
+  absPos <- pos + chromEnds.cum[chr] + (chr - 1) * gap
+  return(absPos)
+}
+# createa manhattan plot of GWAS results
+plot.manhattan <- function(gwas.chr, gwas.pos, gwas.pval, gwas.af, maf = 0.05){
+  # combine data in tibble
+  gwas.dat <- tibble(chr = gwas.chr, pos = gwas.pos, pval = gwas.pval, af = gwas.af)
+  # define chromosome lengths
+  chrLengths <- gwas.dat %>%
+    group_by(chr) %>%
+    summarise(maxPos = max(pos), .groups = 'drop')
+  # get absolute SNP positions for plotting
+  gwas.dat$absPos <- pmap_dbl(list(chr = gwas.dat$chr, pos = gwas.dat$pos), SNP_absolutePosition, chromEnds = chrLengths$maxPos)
+  # get chromosome center positions fror x-axis marks
+  axis.dat <- gwas.dat %>%
+    group_by(chr) %>%
+    summarise(centerPos = (max(absPos) + min(absPos))/2, .groups = 'drop')
+  # get significance threshold
+  sig.bonf <- 0.05/length(gwas.pval)
+  # plot
+  manh.plt <- gwas.dat %>%
+    filter(af >= maf) %>%
+    ggplot(aes(x = absPos, y = -log10(pval), color = as.factor(chr))) +
+      geom_point(alpha = 1, size = 0.5) +
+      geom_hline(yintercept = -log10(sig.bonf), color = wes_palettes['Darjeeling1'][[1]][1], linetype = "dashed") + 
+      scale_color_manual(values = rep(c(wes_palettes['Darjeeling1'][[1]][5], '#2a8faa'), max(gwas.dat$chr))) +
+      scale_x_continuous(label = axis.dat$chr, breaks = axis.dat$centerPos) +
+      labs(x = NULL,
+           y = '-log10(p)') +
+      theme_minimal() +
+      theme(
+        legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+  return(manh.plt)
+}
+# select genes underlying interesting SNP regions
+get.genesForGWAShits <- function(gwas.file, pVal.thrs = 10^-5, LD.dist = 10000, annot.GR = araport11.genes.GR)
+{
+  # get GWAS results and prepare
+  gwas.res <- read_delim(gwas.file, delim = '\t') %>%
+    dplyr::select(chr, ps, p_lrt) %>%
+    filter(p_lrt <= pVal.thrs) %>%
+    mutate(start = ps - !!LD.dist,
+           stop = ps + !!LD.dist)
+  
+  # transform to GRanges
+  gwas.GR <- GRanges(
+    seqnames = Rle(paste0('Chr', pull(gwas.res, chr))),
+    ranges = IRanges(start = pull(gwas.res, start), end = pull(gwas.res, stop)),
+    strand = Rle(strand(rep('*', nrow(gwas.res)))))
+  
+  # get genes tagged by GWAS SNPs
+  gwas.res.araport11 <- subsetByOverlaps(araport11.GR, gwas.GR)
+  genes <- mcols(gwas.res.araport11)$gene
+  
+  return(genes)
+}
+```
+
+```{r plot}
+gwas.result <- read_delim(gwas.files[1], delim = '\t')
+phenotype <- 
+
+plt.manhattan <- plot.manhattan(gwas.result$chr, gwas.result$ps, gwas.result$p_lrt, gwas.result$af) +
+    ggtitle(pheno.labels[pheno.name]) +
+    xlab(' ') +
+    theme(text=element_text(size = 22))
+  
+  plt.qq <- plot.qq(gwas.result$p_lrt) +
+      ggtitle(' ') +
+      theme(text=element_text(size = 22))
+  
+
+
+```
+
+```{r}
+map(gwas.files, function(gwas.file){
+  gwas.result <- read_delim(gwas.file, delim = '\t')
+  
+  plot.manhattan(gwas.result$chr, gwas.result$ps, gwas.result$p_lrt, gwas.result$af) +
+    ggtitle(gwas.file)
+})
+```
+
+
+```{r plots no covariates}
+map(gwas.files.noCov, function(gwas.file){
+  gwas.result <- read_delim(gwas.file, delim = '\t')
+  
+  plot.manhattan(gwas.result$chr, gwas.result$ps, gwas.result$p_lrt, gwas.result$af) +
+    ggtitle(gwas.file)
+})
+```
+
+
+```{r QQplots for both GWASs}
+phenotypes <- map_chr(gwas.files, function(gwas.file){sub('.assoc.txt', '', basename(gwas.file))})
+
+map(phenotypes, function(pheno, ci = 0.95){
+  # get both sets of p-values
+  gwas.pval <- read_delim(gwas.files[grepl(pheno, gwas.files)], delim = '\t') %>% pull(p_lrt)
+  gwas.pval.noCov <- read_delim(gwas.files.noCov[grepl(pheno, gwas.files.noCov)], delim = '\t') %>% pull(p_lrt)
+  
+  # get number of tests
+  nTests = length(gwas.pval)
+  qq.dat <- tibble(
+    kinship_PC = -log10(sort(gwas.pval)),
+    expected = -log10(ppoints(nTests)),
+    kinship = -log10(sort(gwas.pval.noCov)),
+    cLower = -log10(qbeta(p = (1 - ci) / 2, shape1 = seq(nTests), shape2 = rev(seq(nTests)))),
+    cUpper = -log10(qbeta(p = (1 + ci) / 2, shape1 = seq(nTests), shape2 = rev(seq(nTests))))) %>%
+    pivot_longer(cols = c('kinship', 'kinship_PC'), names_to = 'gwas', values_to = 'observed')
+  # make QQ-plot
+  qq.plt <- ggplot(qq.dat, aes(x = expected, y = observed, colour = gwas)) +
+    geom_ribbon(aes(ymax = cUpper, ymin = cLower), fill = "grey30", alpha = 0.5) +
+    #geom_step(color = wes_palettes['Darjeeling1'][[1]][1], size = 1.1, direction = "vh") +
+    geom_step(size = 1.1, direction = "vh") +
+    geom_segment(data = . %>% filter(expected == max(expected)),
+                 aes(x = 0, xend = expected, y = 0, yend = expected),
+                 size = 1.25, alpha = 0.5, color = "grey30", lineend = "round") +
+    labs(x = expression(paste("Expected -log"[10],"(", plain(P),")")),
+         y = expression(paste("Observed -log"[10],"(", plain(P),")"))) +
+    theme_minimal()
+  
+  return(qq.plt)
+})
+
+
+```
+

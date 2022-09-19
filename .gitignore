@@ -1,6 +1,12 @@
 # ignore data files
 **/001.data/*
 
+# ignore result files
+**/003.results/*
+
+# ignore plots
+**/004.plots/*
+
 # ignore log files
 **/999.logs/*
 

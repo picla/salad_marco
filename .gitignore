@@ -14,4 +14,7 @@
 .Rproj.user
 .Rhistory
 
+# ignore temp files
+**/temp/*
+
 

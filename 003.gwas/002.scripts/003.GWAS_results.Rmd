@@ -104,7 +104,7 @@ get.genesForGWAShits <- function(gwas.file, pVal.thrs = 10^-5, LD.dist = 10000, 
 ```
 
 ```{r manhattan plot}
-plot.manhattan(gwas.result$chr, gwas.result$ps, gwas.result$p_lrt, gwas.result$af)
+plot.manhattan(gwas.result$chr, gwas.result$ps, gwas.result$p_lrt, gwas.result$af, maf = 0.05)
 ```
 
 ```{r qq-plot}

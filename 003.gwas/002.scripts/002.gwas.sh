@@ -4,6 +4,7 @@
 conda activate gwas_lactuca
 
 # DATA #
+# update to correct working directory
 WORKdir=/groups/nordborg/user/pieter.clauw/Documents/Collaborations/salad_marco/
 ## general data directory, containing the Lactuca VCF file, phenotypes and ID list
 DATAdir=${WORKdir}003.gwas/001.data/
@@ -19,7 +20,7 @@ BED=${TEMP}Lactuca.snp.TIK.sub
 
 ## extract the name of the phenotype (column name)
 PHENOname=$(awk '(NR == 1){print $2}' $PHENO)
-## temporary file storing the phenptype data
+## temporary file storing the phenotype data
 PHENOtemp=${TEMP}${PHENOname}.txt
 
 ## temporary file combining genotype and phenotype information. Input for GWAS
@@ -45,7 +46,7 @@ mkdir -p $GEMMAdir
 cd $GEMMAdir
 
 # calculate kinship and save in K
-## started 11:11
+# this can take some time
 gemma -bfile $GWASinput -gk 1 -o $K
 
 # run GWAS

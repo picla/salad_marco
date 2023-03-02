@@ -7,5 +7,5 @@ dependencies:
   - gemma
   - plink2
   - bcftools
-prefix: /users/pieter.clauw/.conda/envs/gwas_lactuca
+
 

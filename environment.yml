@@ -1,8 +1,6 @@
 name: gwas_lactuca
 channels:
-  - conda-forge
   - bioconda
-  - defaults
 dependencies:
   - gemma
   - plink2
